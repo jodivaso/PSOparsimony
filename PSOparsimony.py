@@ -290,7 +290,7 @@ class PSOparsimony(object):
 
             for t in range(self.npart):
                 c = population.getChromosome(t)
-                print("ITER", iter, "t", t, "PARAMS", c._params, "FEATURES", c.columns)
+            #    print("ITER", iter, "t", t, "PARAMS", c._params, "FEATURES", c.columns)
 
                 # A los individuos sin features, les pongo todas a True.
                 if np.sum(c.columns) == 0:
