@@ -269,6 +269,8 @@ class PSOparsimony(object):
         velocity = velocity.to_numpy()
 
         self.bestSolList = list()
+        self.best_models_list = list()
+        self.best_models_conf_list = list()
 
         for iter in range(self.maxiter):  # range(self.maxiter):
 
@@ -321,13 +323,6 @@ class PSOparsimony(object):
             _modelsSorted = _models[sort]
 
 
-            if np.nanmax(fitnessval) > self.best_score:  # Guardo el best_score global de todo el proceso.
-                self.best_score = np.nanmax(fitnessval)
-                self.solution_best_score = np.r_[self.best_score,
-                                            fitnesstst[np.argmax(fitnessval)],
-                                            complexity[np.argmax(fitnessval)],
-                                            population[np.argmax(fitnessval)]]
-
             if self.verbose == 2:
                 print("\nStep 1. Fitness sorted")
                 print(np.c_[FitnessValSorted, FitnessTstSorted, ComplexitySorted, population.population][:10, :])
@@ -350,7 +345,7 @@ class PSOparsimony(object):
             # ---------------
             self._summary[iter, :] = parsimony_summary(FitnessValSorted, FitnessTstSorted, ComplexitySorted)
 
-            # Keep Best Solution
+            # Keep Best Solution of this iteration
             # ------------------
             bestfitnessVal = FitnessValSorted[0]
             bestfitnessTst = FitnessTstSorted[0]
@@ -358,12 +353,20 @@ class PSOparsimony(object):
             self.bestsolution = np.concatenate(
                 [[bestfitnessVal, bestfitnessTst, bestcomplexity], PopSorted[0]])
             self.bestSolList.append(self.bestsolution)
+            self.best_models_list.append(_modelsSorted[0])
+            self.best_models_conf_list.append(PopSorted[0])
 
-            # Keep Best Model of this iteration
+            # Keep Global Best Model
             # ------------------
-            self.best_model = _modelsSorted[0]
-            i = np.nanargmax(fitnessval)
-            self.best_model_conf = population.getChromosome(i)
+            if bestfitnessVal > self.best_score:  # Guardo el best_score global de todo el proceso.
+                self.best_score = bestfitnessVal
+                self.solution_best_score = np.r_[self.best_score,
+                                            bestfitnessVal,
+                                            bestfitnessTst,
+                                            bestcomplexity]
+                self.best_model = _modelsSorted[0]
+                self.best_model_conf = PopSorted[0]
+
 
             # Keep elapsed time in minutes
             # ----------------------------
