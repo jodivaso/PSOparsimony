@@ -350,9 +350,8 @@ class PSOparsimony(object):
             bestfitnessVal = FitnessValSorted[0]
             bestfitnessTst = FitnessTstSorted[0]
             bestcomplexity = ComplexitySorted[0]
-            self.bestsolution = np.concatenate(
-                [[bestfitnessVal, bestfitnessTst, bestcomplexity], PopSorted[0]])
-            self.bestSolList.append(self.bestsolution)
+            bestIterSolution = np.concatenate([[bestfitnessVal, bestfitnessTst, bestcomplexity], PopSorted[0]])
+            self.bestSolList.append(bestIterSolution)
             self.best_models_list.append(_modelsSorted[0])
             self.best_models_conf_list.append(PopSorted[0])
 
@@ -360,6 +359,7 @@ class PSOparsimony(object):
             # ------------------
             if bestfitnessVal > self.best_score:  # Guardo el best_score global de todo el proceso.
                 self.best_score = bestfitnessVal
+                self.bestsolution = bestIterSolution
                 self.solution_best_score = np.r_[self.best_score,
                                             bestfitnessVal,
                                             bestfitnessTst,
