@@ -371,7 +371,7 @@ class PSOparsimony(object):
             # Keep elapsed time in minutes
             # ----------------------------
             tac = time.time()
-            elapsed_gen = (tac - tic)
+            elapsed_gen = (tac - tic) / 60.0
             self.minutes_total += + elapsed_gen
 
             # Keep this generation into the History list (with no order)
