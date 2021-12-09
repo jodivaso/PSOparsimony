@@ -297,10 +297,10 @@ class PSOparsimony(object):
             #    print("ITER", iter, "t", t, "PARAMS", c._params, "FEATURES", c.columns)
 
                 # A los individuos sin features, les pongo todas a True.
-                if np.sum(c.columns) == 0:
-                    population._pop[t,len(population._params):] = np.ones(shape = nfs)
-
-                c = population.getChromosome(t)
+                # if np.sum(c.columns) == 0:
+                #     population._pop[t,len(population._params):] = np.ones(shape = nfs)
+                #
+                # c = population.getChromosome(t)
                 if np.isnan(fitnessval[t]) and np.sum(c.columns) > 0:
                     fit = self.fitness(c, X=X, y=y)
                     fitnessval[t] = fit[0][0]
