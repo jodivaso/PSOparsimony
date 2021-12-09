@@ -247,6 +247,8 @@ class PSOparsimony(object):
         self._summary = np.empty((self.maxiter, 6 * 3,))
         self._summary[:] = np.nan
         self.best_score = np.NINF
+        self.best_complexity = np.Inf
+        self.best_parsimony_score = np.NINF
 
         maxFitness = np.Inf  # Esto debería ser un parámetro.
         best_fit_particle = np.empty(self.npart)
@@ -355,10 +357,18 @@ class PSOparsimony(object):
             self.best_models_list.append(_modelsSorted[0])
             self.best_models_conf_list.append(PopSorted[0])
 
+            bestParsimonyFitnessVal = FitnessValSorted[1]
+            bestParsimonyFitnessTst = FitnessTstSorted[1]
+            bestParsimonyComplexity = ComplexitySorted[1]
+            bestIterParsimonySolution = np.concatenate([[bestParsimonyFitnessVal, bestParsimonyFitnessTst, bestParsimonyComplexity], PopSorted[1]])
+
+
             # Keep Global Best Model
             # ------------------
-            if bestfitnessVal > self.best_score:  # Guardo el best_score global de todo el proceso.
+            # Guardo el best_score global del proceso completo. Lo actualizamos si encontramos uno mejor, o uno igual con menos complejidad.
+            if bestfitnessVal > self.best_score or (bestfitnessVal == self.best_score and bestcomplexity < self.best_complexity):
                 self.best_score = bestfitnessVal
+                self.best_complexity = bestcomplexity
                 self.bestsolution = bestIterSolution
                 self.solution_best_score = np.r_[self.best_score,
                                             bestfitnessVal,
@@ -367,6 +377,32 @@ class PSOparsimony(object):
                 self.best_model = _modelsSorted[0]
                 self.best_model_conf = PopSorted[0]
 
+            # Keep Global best parsimony model
+
+            # Si el mejor de la iteración mejora el parsimonioso global y es más simple, actualizo.
+            # Si el mejor de la iteración mejora el parsimonioso global y es más complejo, NO actualizo (ya estará guardado en self.best_score)
+            # Si el mejor parsimonios de la iteración mejora el parsimonioso global y es más simple, actualizo
+            # Si el mejor parsimonioso de la iteración mejora el parsimonioso global y es más complejo, actualizo.
+
+            if bestfitnessVal >= self.best_parsimony_score and bestcomplexity < bestParsimonyComplexity:
+                self.best_parsimony_score = bestfitnessVal
+                self.best_parsimony_solution = bestIterSolution
+                self.solution_best_parsimony_score = np.r_[self.best_score,
+                                                 bestfitnessVal,
+                                                 bestfitnessTst,
+                                                 bestcomplexity]
+                self.best_parsimony_model = _modelsSorted[0]
+                self.best_parsimony_model_conf = PopSorted[0]
+
+            if bestParsimonyFitnessVal > self.best_parsimony_score:
+                self.best_parsimony_score = bestParsimonyFitnessVal
+                self.best_parsimony_solution = bestIterParsimonySolution
+                self.solution_best_parsimony_score = np.r_[self.best_parsimony_score,
+                                                 bestParsimonyFitnessVal,
+                                                 bestParsimonyFitnessTst,
+                                                 bestParsimonyComplexity]
+                self.best_parsimony_model = _modelsSorted[1]
+                self.best_parsimony_model_conf = PopSorted[1]
 
             # Keep elapsed time in minutes
             # ----------------------------
