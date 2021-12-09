@@ -74,9 +74,9 @@ def _population(pop, seed_ini, popSize, feat_thres, type_ini_pop="randomLHS", ):
     # Scale matrix with the parameters range
     population = population * (pop._max - pop._min)
     population = population + pop._min
-    # Convert features to binary 
-    population[:, len(pop._params):nvars] = population[:,
-                                            len(pop._params):nvars] <= feat_thres
+
+    # Convert features to binary
+    #population[:, len(pop._params):nvars] = population[:,len(pop._params):nvars] <= feat_thres
 
     return population
 
@@ -306,7 +306,7 @@ class PSOparsimony(object):
                     complexity[t] = fit[0][2]
                     _models[t] = fit[1]
             #        print("ITER", iter, "t", t, "PARAMS", c._params, "FEATURES", c.columns, "fitnessval", fitnessval[t])
-            #print("FITNESSVAL", fitnessval)
+            #print("Population", iter, population._pop)
 
 
             if self.seed_ini:
@@ -486,10 +486,15 @@ class PSOparsimony(object):
             for nf in range(nparams,nparams + nfs): #Aqui van primero los hiperparámetros y luego las features, por eso avanzo hasta las features.
                 for p in range(self.npart):
                     population._pop[p,nf] = population._pop[p,nf] + velocity[p,nf] # Update positions for the model positions (x = x + v)
-                    if population._pop[p,nf] < 0.6: #TODO: ¿Por qué este 0.6?? (COMENTARIO PARA JAVI)
-                        population._pop[p,nf] = 0
-                    else:
-                        population._pop[p,nf] = 1
+                    # if population._pop[p,nf] < 0.6: #TODO: ¿Por qué este 0.6?? (COMENTARIO PARA JAVI)
+                    #     population._pop[p,nf] = 0
+                    # else:
+                    #     population._pop[p,nf] = 1
+                    #Me aseguro de que estamos en el intervalo [0,1]
+                    if population._pop[p, nf] > 1.0:
+                        population._pop[p, nf] = 1.0
+                    if population._pop[p,nf] < 0.0:
+                        population._pop[p, nf] = 0.0
 
             ######################
             # Mutation of FEATURES
@@ -499,10 +504,10 @@ class PSOparsimony(object):
                 for p in range(self.npart):
                     for nf in range(nparams,nparams + nfs):
                         if rnd_mut[p, nf - nparams] < self.pmutation:
-                            if population._pop[p, nf] == 0:
-                                population._pop[p, nf] = 1
+                            if population._pop[p, nf] < 0.5:
+                                population._pop[p, nf] = np.random.uniform(low=0.5, high=1.0)
                             else:
-                                population._pop[p, nf] = 0
+                                population._pop[p, nf] = np.random.uniform(low=0.0, high=0.5)
 
 
             #######################################################
