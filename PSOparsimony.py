@@ -436,7 +436,7 @@ class PSOparsimony(object):
                 break
             if iter == self.maxiter:
                 break
-            if (len(best_val_cost) - (np.argmax(best_val_cost) + 1)) >= self.early_stop:
+            if (len(best_val_cost) - (np.min(np.arange(len(best_val_cost))[best_val_cost >= (np.max(best_val_cost) - self.rerank_error)]))) >= self.early_stop:
                 break
 
             #####################################################
