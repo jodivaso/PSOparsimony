@@ -249,6 +249,7 @@ class PSOparsimony(object):
         self.best_score = np.NINF
         self.best_complexity = np.Inf
         self.best_parsimony_score = np.NINF
+        self.best_parsimony_complexity = np.Inf
 
         maxFitness = np.Inf  # Esto debería ser un parámetro.
         best_fit_particle = np.empty(self.npart)
@@ -382,11 +383,13 @@ class PSOparsimony(object):
             # Si el mejor de la iteración mejora el parsimonioso global y es más simple, actualizo.
             # Si el mejor de la iteración mejora el parsimonioso global y es más complejo, NO actualizo (ya estará guardado en self.best_score)
             # Si el mejor parsimonios de la iteración mejora el parsimonioso global y es más simple, actualizo
-            # Si el mejor parsimonioso de la iteración mejora el parsimonioso global y es más complejo, actualizo.
+            # Si el mejor parsimonioso de la iteración mejora el parsimonioso global y es más complejo,
+            # entonces aplico algo parecido al rerank (lo actualizo si mejora mucho, aunque sea más complejo)
 
-            if bestfitnessVal >= self.best_parsimony_score and bestcomplexity < bestParsimonyComplexity:
+            if bestfitnessVal >= self.best_parsimony_score and bestcomplexity < self.best_parsimony_complexity:
                 self.best_parsimony_score = bestfitnessVal
                 self.best_parsimony_solution = bestIterSolution
+                self.best_parsimony_complexity = bestcomplexity
                 self.solution_best_parsimony_score = np.r_[self.best_score,
                                                  bestfitnessVal,
                                                  bestfitnessTst,
@@ -394,9 +397,11 @@ class PSOparsimony(object):
                 self.best_parsimony_model = _modelsSorted[0]
                 self.best_parsimony_model_conf = PopSorted[0]
 
-            if bestParsimonyFitnessVal > self.best_parsimony_score:
+            if (bestParsimonyFitnessVal >= self.best_parsimony_score and bestParsimonyComplexity < self.best_parsimony_complexity) \
+                    or (bestParsimonyFitnessVal > self.best_parsimony_score + self.rerank_error):
                 self.best_parsimony_score = bestParsimonyFitnessVal
                 self.best_parsimony_solution = bestIterParsimonySolution
+                self.best_parsimony_complexity = bestParsimonyComplexity
                 self.solution_best_parsimony_score = np.r_[self.best_parsimony_score,
                                                  bestParsimonyFitnessVal,
                                                  bestParsimonyFitnessTst,
