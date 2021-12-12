@@ -200,6 +200,7 @@ class PSOparsimony(object):
                  IW_min=0.4,
                  K=3,
                  pmutation=0.03,
+                 tol = 1e-4,
                  rerank_error=0.005,
                  keep_history = False,
                  feat_thres = 0.90,
@@ -219,6 +220,7 @@ class PSOparsimony(object):
         self.IW_max = IW_max
         self.IW_min = IW_min
         self.K = K
+        self.tol = tol
         self.pmutation = pmutation
         self.rerank_error = rerank_error
         self.verbose = verbose
@@ -441,7 +443,7 @@ class PSOparsimony(object):
                 break
             if iter == self.maxiter:
                 break
-            if (len(best_val_cost) - (np.min(np.arange(len(best_val_cost))[best_val_cost >= (np.max(best_val_cost) - self.rerank_error)]))) >= self.early_stop:
+            if (len(best_val_cost) - (np.min(np.arange(len(best_val_cost))[best_val_cost >= (np.max(best_val_cost) - self.tol)]))) >= self.early_stop:
                 break
 
             #####################################################
