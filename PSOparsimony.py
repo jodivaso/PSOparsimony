@@ -32,7 +32,7 @@ def parsimony_monitor(iter, fitnessval, bestfitnessVal, bestfitnessTst, bestcomp
                     f"Time(min) = {round(minutes_gen, digits)}".center(17 + digits)]) + "\n")
 
 
-def _population(pop, seed_ini, popSize, feat_thres, type_ini_pop="randomLHS", ):
+def _population(pop, seed_ini, popSize, type_ini_pop="randomLHS", ):
     r"""
     Population initialization in GA-PARSIMONY with a combined chromosome of model parameters 
     and selected features. Functions for creating an initial population to be used in the GA-PARSIMONY process.
@@ -243,8 +243,14 @@ class PSOparsimony(object):
             np.random.seed(self.seed_ini)
 
         population = Population(self.params, columns=self.features)
-        population.population = _population(population, seed_ini=self.seed_ini, popSize=self.npart, feat_thres=self.feat_thres,
+        population.population = _population(population, seed_ini=self.seed_ini, popSize=self.npart,
                                             type_ini_pop=self.type_ini_pop)  # Creo la poblacion de la primera generacion
+
+
+        # Update population to satisfy the feat_thres
+        population.update_to_feat_thres(self.npart, self.feat_thres)
+
+
         nfs = len(population.colsnames)
         self._summary = np.empty((self.maxiter, 6 * 3,))
         self._summary[:] = np.nan
