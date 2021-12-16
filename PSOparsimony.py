@@ -293,11 +293,11 @@ class PSOparsimony(object):
 
 
         # Variables to store the best global positions, fitnessval and complexity of each particle
-        # bestGlobalPopulation = copy.deepcopy(population._pop)
-        # bestGlobalFitnessVal = np.empty(self.npart)
-        # bestGlobalFitnessVal[:] = np.NINF
-        # bestGlobalComplexity = np.empty(self.npart)
-        # bestGlobalComplexity[:] = np.inf
+        bestGlobalPopulation = copy.deepcopy(population._pop)
+        bestGlobalFitnessVal = np.empty(self.npart)
+        bestGlobalFitnessVal[:] = np.NINF
+        bestGlobalComplexity = np.empty(self.npart)
+        bestGlobalComplexity[:] = np.inf
 
         for iter in range(self.maxiter):  # range(self.maxiter):
 
@@ -436,6 +436,14 @@ class PSOparsimony(object):
                 self.best_parsimony_model = _modelsSorted[1]
                 self.best_parsimony_model_conf = PopSorted[1].copy()
 
+            # Update global best positions, fitness and complexity of each particle (with NO rerank)
+            for i in range(self.npart):
+                if fitnessval[i] > bestGlobalFitnessVal[i] or (fitnessval[i] == bestGlobalFitnessVal[i] and complexity[i] < bestGlobalComplexity[i]):
+                    bestGlobalPopulation[i,:] = population._pop[i,:]
+                    bestGlobalFitnessVal[i] = fitnessval[i]
+                    bestGlobalComplexity[i] = complexity[i]
+
+
             # Keep elapsed time in minutes
             # ----------------------------
             tac = time.time()
@@ -494,8 +502,24 @@ class PSOparsimony(object):
             # Update particular global bests (best position of the particle in the whole process, wrt to rerank)
             ###########################################
 
+            # We have to take care to avoid problems with rerank:
+            # EXAMPLE (rerank = 0.08):
+            # SCORE 0.80 0.85 0.90
+            # COST    10  100  200
+            # The best score wrt to rerank should be 0.85. But if we get 0.80 with cost 10 in the next
+            # iteration, that would be chosen. This is wrong, since we would be moving to worse scores. The
+            # rerank must be applied wrt the best global score of each particle.
             for t in range(self.npart):
-                if fitnessval[t] > best_fit_particle[t] or (abs(fitnessval[t] - best_fit_particle[t]) <= self.rerank_error and complexity[t] < best_complexity_particle[t]):
+                # Four cases:
+                # (1) If the best improves much, then update.
+                # (2) If the best does not improve much, but the complexity is lower, then update.
+                # (3) If the best improves, it is more complex than the current best but less complex than the global
+                #     best, then update.
+                # (4) Otherwise, rerank criterion, but "consuming the rerank" wrt to the global best.
+                if (fitnessval[t] > best_fit_particle[t] + self.rerank_error) \
+                    or (fitnessval[t] >= best_fit_particle[t] and complexity[t] < best_complexity_particle[t]) \
+                    or (fitnessval[t] > best_fit_particle[t] and complexity[t] >= best_complexity_particle[t] and complexity[t] < bestGlobalComplexity[t]) \
+                    or (bestGlobalFitnessVal[t] - fitnessval[t]) <= self.rerank_error - (bestGlobalFitnessVal[t] - best_fit_particle[t]) and complexity[t] < best_complexity_particle[t]:
                     best_fit_particle[t] = fitnessval[t]  # Update the particular best fit of that particle.
                     best_pos_particle[t, :] = population._pop[t, :]  # Update the particular best pos of that particle.
                     best_complexity_particle[t] = complexity[t] # Update the complexity (could be more complex if the fitnessval[t] is better)
