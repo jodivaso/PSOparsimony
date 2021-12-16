@@ -1,3 +1,5 @@
+import copy
+
 from GAparsimony import Population, order
 from GAparsimony.util import parsimony_monitor, parsimony_summary
 from GAparsimony.lhs import geneticLHS, improvedLHS, maximinLHS, optimumLHS, randomLHS
@@ -204,6 +206,7 @@ class PSOparsimony(object):
                  rerank_error=0.005,
                  keep_history = False,
                  feat_thres = 0.90,
+                 best_global_thres = 1,
                  seed_ini = None,
                  verbose=1):
 
@@ -231,6 +234,11 @@ class PSOparsimony(object):
         self.minutes_total = 0
         self.history = list()
         self.keep_history = keep_history
+
+        # Percentage of particles that will be influenced by the best global of their neighbourhoods
+        # (otherwise, they will be influenced by the best of the iteration in each neighbourhood)
+        #TODO: El comportamiento anterior se conseguia iniciando esta variable a 0.
+        self.best_global_thres = best_global_thres
 
         if self.seed_ini:
             np.random.seed(self.seed_ini)
@@ -282,6 +290,14 @@ class PSOparsimony(object):
         self.bestSolList = list()
         self.best_models_list = list()
         self.best_models_conf_list = list()
+
+
+        # Variables to store the best global positions, fitnessval and complexity of each particle
+        # bestGlobalPopulation = copy.deepcopy(population._pop)
+        # bestGlobalFitnessVal = np.empty(self.npart)
+        # bestGlobalFitnessVal[:] = np.NINF
+        # bestGlobalComplexity = np.empty(self.npart)
+        # bestGlobalComplexity[:] = np.inf
 
         for iter in range(self.maxiter):  # range(self.maxiter):
 
@@ -352,6 +368,9 @@ class PSOparsimony(object):
                     print(np.c_[FitnessValSorted, FitnessTstSorted, ComplexitySorted, population.population][:10, :])
                     # input("Press [enter] to continue")
 
+
+            #print(pd.DataFrame(np.c_[bestGlobalPopulation, bestGlobalFitnessVal, bestGlobalComplexity]))
+
             # Keep results
             # ---------------
             self._summary[iter, :] = parsimony_summary(FitnessValSorted, FitnessTstSorted, ComplexitySorted)
@@ -384,7 +403,7 @@ class PSOparsimony(object):
                                             bestfitnessTst,
                                             bestcomplexity]
                 self.best_model = _modelsSorted[0]
-                self.best_model_conf = PopSorted[0]
+                self.best_model_conf = PopSorted[0].copy()
 
             # Keep Global best parsimony model
 
@@ -403,7 +422,7 @@ class PSOparsimony(object):
                                                  bestfitnessTst,
                                                  bestcomplexity]
                 self.best_parsimony_model = _modelsSorted[0]
-                self.best_parsimony_model_conf = PopSorted[0]
+                self.best_parsimony_model_conf = PopSorted[0].copy()
 
             if (bestParsimonyFitnessVal >= self.best_parsimony_score and bestParsimonyComplexity < self.best_parsimony_complexity) \
                     or (bestParsimonyFitnessVal > self.best_parsimony_score + self.rerank_error):
@@ -415,7 +434,7 @@ class PSOparsimony(object):
                                                  bestParsimonyFitnessTst,
                                                  bestParsimonyComplexity]
                 self.best_parsimony_model = _modelsSorted[1]
-                self.best_parsimony_model_conf = PopSorted[1]
+                self.best_parsimony_model_conf = PopSorted[1].copy()
 
             # Keep elapsed time in minutes
             # ----------------------------
@@ -467,8 +486,12 @@ class PSOparsimony(object):
                     # Duplicates are removed and this represents the neighbourhood.
                     nb.append(np.unique(np.append(np.random.randint(low=0, high=self.npart - 1, size=self.K), i)))
 
+                # Create an array to decide if a particle must be influenced by the best global of the neighbourhoods or the best of the iteration
+                nb_global = np.random.choice(a=[True, False], size=(self.npart,), p=[self.best_global_thres, 1-self.best_global_thres])
+
+
             ###########################################
-            # Update particular bests (best position of the particle, wrt to rerank)
+            # Update particular global bests (best position of the particle in the whole process, wrt to rerank)
             ###########################################
 
             for t in range(self.npart):
@@ -484,21 +507,34 @@ class PSOparsimony(object):
             best_fit_neighbourhood = np.empty(self.npart)  # Array donde en la posición i tiene el fit de la mejor partícula del vecindario i.
             best_fit_neighbourhood[:] = np.Inf
 
-            # TODO: AQUI CON EL NUEVO RERANK SE ESTABA PONIENDO SIEMPRE EL QUE TENGA MEJOR FITNESS!!
             for i in range(self.npart):
-                particles_positions = nb[i]  # Posiciones de las partículas vecinas (el número dentro de population)
-                local_fits = fitnessval[particles_positions]
 
-                local_complexity = complexity[particles_positions]
-                local_sort = order(local_fits, kind='heapsort', decreasing=True, na_last=True)
-                local_fits_sorted = local_fits[local_sort]
-                local_complexity_sorted = local_complexity[local_sort]
-                local_sort_rerank = _rerank(local_fits_sorted,local_complexity_sorted, len(local_fits), self.rerank_error, preserve_best=False)
-                max_local_fit_pos = particles_positions[local_sort[local_sort_rerank[0]]]
+                if nb_global[i]: # Si hay que coger el mejor global del vecindario
+                    particles_positions = nb[i]  # Posiciones de las partículas vecinas (el número dentro de population)
+                    local_fits = best_fit_particle[particles_positions]
+                    local_complexity = best_complexity_particle[particles_positions]
+                    local_sort = order(local_fits, kind='heapsort', decreasing=True, na_last=True)
+                    local_fits_sorted = local_fits[local_sort]
+                    local_complexity_sorted = local_complexity[local_sort]
+                    local_sort_rerank = _rerank(local_fits_sorted, local_complexity_sorted, len(local_fits),
+                                                self.rerank_error, preserve_best=True)
+                    max_local_fit_pos = particles_positions[local_sort[local_sort_rerank[0]]]
+                    best_pos_neighbourhood[i, :] = best_pos_particle[max_local_fit_pos, :]
+                    #best_fit_neighbourhood[i] = best_fit_particle[max_local_fit_pos]
 
-                # NOTA: AQUI ESTOY PONIENDO EL MEJOR DEL VECINDARIO ACTUAL EN LA ITERACCIÓN ACTUAL. Quizás el mejor histórico?
-                best_pos_neighbourhood[i, :] = population._pop[max_local_fit_pos, :]
-                best_fit_neighbourhood[i] = fitnessval[max_local_fit_pos]
+                else: # Hay que coger el mejor del vecindario (en la actual iteración únicamente)
+                    particles_positions = nb[i]  # Posiciones de las partículas vecinas (el número dentro de population)
+                    local_fits = fitnessval[particles_positions]
+
+                    local_complexity = complexity[particles_positions]
+                    local_sort = order(local_fits, kind='heapsort', decreasing=True, na_last=True)
+                    local_fits_sorted = local_fits[local_sort]
+                    local_complexity_sorted = local_complexity[local_sort]
+                    local_sort_rerank = _rerank(local_fits_sorted,local_complexity_sorted, len(local_fits), self.rerank_error, preserve_best=False)
+                    max_local_fit_pos = particles_positions[local_sort[local_sort_rerank[0]]]
+
+                    best_pos_neighbourhood[i, :] = population._pop[max_local_fit_pos, :]
+                    #best_fit_neighbourhood[i] = fitnessval[max_local_fit_pos]
 
 
             #####################################################
@@ -517,9 +553,11 @@ class PSOparsimony(object):
 
             #if pbest.fit != lbest.fit, the third term is added TODO: No sé por que se hace solo en este caso.
 
-            different = (best_fit_particle != best_fit_neighbourhood)
-            velocity[different, :] = velocity[different, :] + self.c2 * U2[different, :] * (
-                        best_pos_neighbourhood[different, :] - population._pop[different, :])
+            # different = (best_fit_particle != best_fit_neighbourhood)
+            # velocity[different, :] = velocity[different, :] + self.c2 * U2[different, :] * (
+            #             best_pos_neighbourhood[different, :] - population._pop[different, :])
+            velocity[:, :] = velocity[:, :] + self.c2 * U2[:, :] * (
+                        best_pos_neighbourhood[:, :] - population._pop[:, :])
 
             #Limit velocity to vmax to avoid explosion
 
@@ -576,3 +614,5 @@ class PSOparsimony(object):
                 population._pop[out_min, j] = population._min[j]
                 velocity[out_max, j] = 0
                 velocity[out_min, j] = 0
+
+            #print("ITER", iter, "ITER SCORE", FitnessValSorted[0], "GLOBAL SCORE", self.best_score)
