@@ -241,7 +241,7 @@ class PSOparsimony(object):
         #TODO: El comportamiento anterior se conseguia iniciando esta variable a 0.
         self.best_global_thres = best_global_thres
 
-        if len(particles_to_delete) < maxiter: #Si la longitud es menor que el número de iteraciones, completo con ceros hasta el máximo de iteraciones
+        if particles_to_delete is not None and len(particles_to_delete) < maxiter: #Si la longitud es menor que el número de iteraciones, completo con ceros hasta el máximo de iteraciones
             self.particles_to_delete = np.zeros(maxiter).astype(int)
             self.particles_to_delete[:len(particles_to_delete)] = particles_to_delete[:]
         else:
@@ -321,7 +321,6 @@ class PSOparsimony(object):
 
         update_neighbourhoods = False
 
-        tiempo_inicial = time.time()
         for iter in range(self.maxiter):  # range(self.maxiter):
 
             self.iter = iter
@@ -647,7 +646,7 @@ class PSOparsimony(object):
             # Mutation of FEATURES
             # ####################
             if self.pmutation > 0:
-                rnd_mut = np.random.uniform(size = (self.npart,nfs))
+                rnd_mut = np.random.uniform(size = (self.npart, nfs))
                 for p in range(self.npart):
                     for nf in range(nparams,nparams + nfs):
                         if rnd_mut[p, nf - nparams] < self.pmutation:
@@ -676,9 +675,6 @@ class PSOparsimony(object):
                 velocity[out_min, j] = 0
 
             #print("ITER", iter, "ITER SCORE", FitnessValSorted[0], "GLOBAL SCORE", self.best_score)
-
-        tiempo_final = time.time() - tiempo_inicial
-        print("TIEMPO FINAL", tiempo_final)
 
 
         # Para generar números aleatorios que sumen M, podemos tener problemas con la aleatoriedad
