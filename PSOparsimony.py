@@ -7,7 +7,7 @@ import math
 import numpy as np
 import pandas as pd
 import time
-
+from numpy.random import multinomial
 
 def parsimony_monitor(iter, fitnessval, bestfitnessVal, bestfitnessTst, bestcomplexity, minutes_gen, digits=7, *args):
     r"""Functions for monitoring GA-PARSIMONY algorithm evolution
@@ -123,7 +123,7 @@ def _rerank(fitnessval, complexity, popSize, rerank_error, preserve_best=True):
     position = sort
 
     # start
-    if preserve_best:
+    if preserve_best and len(cost1)>1:
         pos1 = 1
         pos2 = 2
         error_posic = cost1[1]
@@ -207,6 +207,7 @@ class PSOparsimony(object):
                  keep_history = False,
                  feat_thres = 0.90,
                  best_global_thres = 1,
+                 particles_to_delete=None,
                  seed_ini = None,
                  verbose=1):
 
@@ -239,6 +240,12 @@ class PSOparsimony(object):
         # (otherwise, they will be influenced by the best of the iteration in each neighbourhood)
         #TODO: El comportamiento anterior se conseguia iniciando esta variable a 0.
         self.best_global_thres = best_global_thres
+
+        if len(particles_to_delete) < maxiter: #Si la longitud es menor que el número de iteraciones, completo con ceros hasta el máximo de iteraciones
+            self.particles_to_delete = np.zeros(maxiter).astype(int)
+            self.particles_to_delete[:len(particles_to_delete)] = particles_to_delete[:]
+        else:
+            self.particles_to_delete = particles_to_delete
 
         if self.seed_ini:
             np.random.seed(self.seed_ini)
@@ -299,25 +306,33 @@ class PSOparsimony(object):
         bestGlobalComplexity = np.empty(self.npart)
         bestGlobalComplexity[:] = np.inf
 
+        #Variable that tracks the deleted particles (their number in the table)
+        deleted_particles = []
+        valid_particles = [x for x in range(self.npart) if
+                           x not in deleted_particles]  # valid particles (numbers in the table)
+
+        fitnessval = np.empty(self.npart)
+        fitnessval[:] = np.nan
+        fitnesstst = np.empty(self.npart)
+        fitnesstst[:] = np.nan
+        complexity = np.empty(self.npart)
+        complexity[:] = np.nan
+        _models = np.empty(self.npart).astype(object)
+
+        update_neighbourhoods = False
+
+        tiempo_inicial = time.time()
         for iter in range(self.maxiter):  # range(self.maxiter):
 
             self.iter = iter
 
             tic = time.time()
-
-            fitnessval = np.empty(self.npart)
-            fitnessval[:] = np.nan
-            fitnesstst = np.empty(self.npart)
-            fitnesstst[:] = np.nan
-            complexity = np.empty(self.npart)
-            complexity[:] = np.nan
-            _models = np.empty(self.npart).astype(object)
-
             #####################################################
             # Compute solutions
             #####################################################
 
-            for t in range(self.npart):
+            # for t in range(self.npart):
+            for t in valid_particles:
                 c = population.getChromosome(t)
             #    print("ITER", iter, "t", t, "PARAMS", c._params, "FEATURES", c.columns)
 
@@ -326,7 +341,7 @@ class PSOparsimony(object):
                 #     population._pop[t,len(population._params):] = np.ones(shape = nfs)
                 #
                 # c = population.getChromosome(t)
-                if np.isnan(fitnessval[t]) and np.sum(c.columns) > 0:
+                if np.sum(c.columns) > 0:
                     fit = self.fitness(c, X=X, y=y)
                     fitnessval[t] = fit[0][0]
                     fitnesstst[t] = fit[0][1]
@@ -334,7 +349,6 @@ class PSOparsimony(object):
                     _models[t] = fit[1]
             #        print("ITER", iter, "t", t, "PARAMS", c._params, "FEATURES", c.columns, "fitnessval", fitnessval[t])
             #print("Population", iter, population._pop)
-
 
             if self.seed_ini:
                 np.random.seed(self.seed_ini * iter)
@@ -479,11 +493,24 @@ class PSOparsimony(object):
             if (len(best_val_cost) - (np.min(np.arange(len(best_val_cost))[best_val_cost >= (np.max(best_val_cost) - self.tol)]))) >= self.early_stop:
                 break
 
+            ####################################################
+            # Deletion step
+            ####################################################
+            if self.particles_to_delete is not None and self.particles_to_delete[iter]>0:
+                # En la lista particles_to_delete[iter] está el número de partículas que tenemos que eliminar en esta iteración
+                # Eliminamos las peores ¿en global o de esta iteración? Lo hago en global.
+                sort = order(bestGlobalFitnessVal, kind='heapsort', decreasing=True, na_last=True)
+                sort_not_deleted = [x for x in sort if x not in deleted_particles]
+                deleted_particles = deleted_particles + sort_not_deleted[-self.particles_to_delete[iter]:]
+                valid_particles = [x for x in range(self.npart) if x not in deleted_particles]
+                update_neighbourhoods = True
+
             #####################################################
             # Generation of the Neighbourhoods
             #####################################################
-            #Si no hemos mejorado, cambiamos el vecindario.
-            if FitnessValSorted[0] <= self.best_score:
+            #Si no hemos mejorado, cambiamos el vecindario. También lo cambiamos si hemos eliminado partículas.
+            if FitnessValSorted[0] <= self.best_score or update_neighbourhoods:
+                update_neighbourhoods = False
                 # Cambio la implementación de R para no hacer matrices enormes con muchos NA
                 nb = list()
                 for i in range(self.npart):
@@ -492,10 +519,18 @@ class PSOparsimony(object):
 
                     # Thus, a random integer vector of K elements between 0 and npart-1 is created and we append the particle.
                     # Duplicates are removed and this represents the neighbourhood.
-                    nb.append(np.unique(np.append(np.random.randint(low=0, high=self.npart - 1, size=self.K), i)))
+                    if i not in deleted_particles:
+                        #nb.append(np.unique(np.append(np.random.randint(low=0, high=self.npart - 1, size=self.K), i)))
+
+                        indices = np.random.randint(low=0, high=len(valid_particles), size=self.K) # High is not included
+                        random_particles = [valid_particles[index] for index in indices]
+                        nb.append(np.unique(np.append(random_particles, i)))
+                    else:
+                        nb.append(np.nan)
 
                 # Create an array to decide if a particle must be influenced by the best global of the neighbourhoods or the best of the iteration
                 nb_global = np.random.choice(a=[True, False], size=(self.npart,), p=[self.best_global_thres, 1-self.best_global_thres])
+
 
 
             ###########################################
@@ -531,7 +566,8 @@ class PSOparsimony(object):
             best_fit_neighbourhood = np.empty(self.npart)  # Array donde en la posición i tiene el fit de la mejor partícula del vecindario i.
             best_fit_neighbourhood[:] = np.Inf
 
-            for i in range(self.npart):
+            #for i in range(self.npart):
+            for i in valid_particles:
 
                 if nb_global[i]: # Si hay que coger el mejor global del vecindario
                     particles_positions = nb[i]  # Posiciones de las partículas vecinas (el número dentro de population)
@@ -640,3 +676,45 @@ class PSOparsimony(object):
                 velocity[out_min, j] = 0
 
             #print("ITER", iter, "ITER SCORE", FitnessValSorted[0], "GLOBAL SCORE", self.best_score)
+
+        tiempo_final = time.time() - tiempo_inicial
+        print("TIEMPO FINAL", tiempo_final)
+
+
+        # Para generar números aleatorios que sumen M, podemos tener problemas con la aleatoriedad
+        # https://stackoverflow.com/questions/8064629/random-numbers-that-add-to-100-matlab/
+        # https://stackoverflow.com/questions/2640053/getting-n-random-numbers-whose-sum-is-m
+        # https://stackoverflow.com/questions/59148994/how-to-get-n-random-integer-numbers-whose-sum-is-equal-to-m
+        # from numpy.random import multinomial
+        # import numpy as np
+        # n = 20
+        # m = 80
+        # # Se generan n números entre 0 y m que suman m
+        # a = sorted(np.random.multinomial(m, np.ones(n) / n))
+        # print(a)
+        # print("SUMA", np.sum(a))
+
+# This produces an array that in the i-th position has the number
+# of particles that such be deleted in the i-th iteration. At the end, m particles are deleted in at most n iterations.
+# At the beginning, no particles are deleted (to permit improvements), then more and more particles are deleted.
+
+def generate_array_to_delete_particles(n, m):
+    initial_n = n
+    iters_no_elimination = round(n*0.1) # No elimination in the first 10% of iterations
+    n = round(n*0.9)
+    a = np.array(sorted(np.random.multinomial(m, np.ones(n) / n), reverse = True))
+    a = a[a!=0] #Eliminate zeros
+    zeros_init = np.zeros(iters_no_elimination).astype(int)
+    zeros_end = np.zeros(initial_n - len(zeros_init) - len(a)).astype(int)
+    output = np.concatenate((zeros_init,a,zeros_end))
+    return output.astype(int)
+
+# def test(n,m):
+#     a1 = np.array(sorted(np.random.multinomial(m, np.ones(n) / n)))
+#     a2 = a1[0::2]
+#     a3 = a1[1::2]
+#     a3_reversed= a3[::-1]
+#     output = []
+#     output = np.concatenate((a2,a3_reversed))
+#     return output
+
