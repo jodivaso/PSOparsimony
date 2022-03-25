@@ -274,7 +274,7 @@ class PSOparsimony(object):
         self.best_score = np.NINF
         self.best_complexity = np.Inf
 
-        maxFitness = np.Inf  # Esto debería ser un parámetro.
+        maxFitness = np.Inf
         best_fit_particle = np.empty(self.npart)
         best_fit_particle[:] = np.NINF
 
@@ -562,7 +562,7 @@ class PSOparsimony(object):
             velocity[:, :] = velocity[:, :] + self.c2 * U2[:, :] * (
                         best_pos_neighbourhood[:, :] - population._pop[:, :])
 
-            #Limit velocity to vmax to avoid explosion
+            # Limit velocity to vmax to avoid explosion
 
             for j in range(len(population._params) + nfs):
                 vmax_pos = np.where(abs(velocity[:,j]) > vmax[j])[0]
