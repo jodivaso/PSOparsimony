@@ -511,15 +511,14 @@ class PSOparsimony(object):
             ###########################################
             # Compute Local bests in the Neighbourhoods
             ###########################################
-            best_pos_neighbourhood = np.empty(shape=(self.npart, len(population._params) + nfs))  # Matriz donde en la fila i tiene la mejor particula del vecindario i.
-            best_fit_neighbourhood = np.empty(self.npart)  # Array donde en la posición i tiene el fit de la mejor partícula del vecindario i.
+            best_pos_neighbourhood = np.empty(shape=(self.npart, len(population._params) + nfs))  # Matrix in which i-th row contains the best particle of the i-th neighbourhood.
+            best_fit_neighbourhood = np.empty(self.npart)  # Array that contains in position i the score of the best particle of the i-th neighbourhood.
             best_fit_neighbourhood[:] = np.Inf
 
-            #for i in range(self.npart):
             for i in valid_particles:
 
-                if nb_global[i]: # Si hay que coger el mejor global del vecindario
-                    particles_positions = nb[i]  # Posiciones de las partículas vecinas (el número dentro de population)
+                if nb_global[i]: # If the global best of the neighbourhood must be selected
+                    particles_positions = nb[i]  # Positions of the neighbourhood particles (number within population)
                     local_fits = best_fit_particle[particles_positions]
                     local_complexity = best_complexity_particle[particles_positions]
                     local_sort = order(local_fits, kind='heapsort', decreasing=True, na_last=True)
@@ -531,8 +530,8 @@ class PSOparsimony(object):
                     best_pos_neighbourhood[i, :] = best_pos_particle[max_local_fit_pos, :]
                     #best_fit_neighbourhood[i] = best_fit_particle[max_local_fit_pos]
 
-                else: # Hay que coger el mejor del vecindario (en la actual iteración únicamente)
-                    particles_positions = nb[i]  # Posiciones de las partículas vecinas (el número dentro de population)
+                else: # The best of the neighbourhood in the current iteration
+                    particles_positions = nb[i]  # Positions of the neighbourhood particles (number within population)
                     local_fits = fitnessval[particles_positions]
 
                     local_complexity = complexity[particles_positions]
@@ -560,11 +559,6 @@ class PSOparsimony(object):
             # Two first terms of the velocity
             velocity = IW * velocity + U1 * self.c1 * (best_pos_particle - population._pop)
 
-            #if pbest.fit != lbest.fit, the third term is added TODO: No sé por que se hace solo en este caso.
-
-            # different = (best_fit_particle != best_fit_neighbourhood)
-            # velocity[different, :] = velocity[different, :] + self.c2 * U2[different, :] * (
-            #             best_pos_neighbourhood[different, :] - population._pop[different, :])
             velocity[:, :] = velocity[:, :] + self.c2 * U2[:, :] * (
                         best_pos_neighbourhood[:, :] - population._pop[:, :])
 
@@ -579,14 +573,10 @@ class PSOparsimony(object):
             # Update positions of FEATURES
             ##############################
             nparams = len(population._params)
-            for nf in range(nparams,nparams + nfs): #Aqui van primero los hiperparámetros y luego las features, por eso avanzo hasta las features.
+            for nf in range(nparams,nparams + nfs): # We must move to the features (the particles contain first hyper-parameters and then features)
                 for p in range(self.npart):
                     population._pop[p,nf] = population._pop[p,nf] + velocity[p,nf] # Update positions for the model positions (x = x + v)
-                    # if population._pop[p,nf] < 0.6: #TODO: ¿Por qué este 0.6?? (COMENTARIO PARA JAVI)
-                    #     population._pop[p,nf] = 0
-                    # else:
-                    #     population._pop[p,nf] = 1
-                    #Me aseguro de que estamos en el intervalo [0,1]
+                    # To ensure that the interval [0,1] is preserved
                     if population._pop[p, nf] > 1.0:
                         population._pop[p, nf] = 1.0
                     if population._pop[p,nf] < 0.0:
@@ -624,7 +614,7 @@ class PSOparsimony(object):
                 velocity[out_max, j] = 0
                 velocity[out_min, j] = 0
 
-            #print("ITER", iter, "ITER SCORE", FitnessValSorted[0], "GLOBAL SCORE", self.best_score)
+
 
 
         # Para generar números aleatorios que sumen M, podemos tener problemas con la aleatoriedad
