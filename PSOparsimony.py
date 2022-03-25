@@ -447,11 +447,11 @@ class PSOparsimony(object):
                 break
 
             ####################################################
-            # Deletion step
+            # Deletion step (disabled by default)
             ####################################################
             if self.particles_to_delete is not None and self.particles_to_delete[iter]>0:
-                # En la lista particles_to_delete[iter] está el número de partículas que tenemos que eliminar en esta iteración
-                # Eliminamos las peores ¿en global o de esta iteración? Lo hago en global.
+                # particles_to_delete[iter] contains the number of particles to be deleted in that iteration
+                # We delete the worse particles at that point (in global, not in that iteration).
                 sort = order(bestGlobalFitnessVal, kind='heapsort', decreasing=True, na_last=True)
                 sort_not_deleted = [x for x in sort if x not in deleted_particles]
                 deleted_particles = deleted_particles + sort_not_deleted[-self.particles_to_delete[iter]:]
@@ -461,10 +461,9 @@ class PSOparsimony(object):
             #####################################################
             # Generation of the Neighbourhoods
             #####################################################
-            #Si no hemos mejorado, cambiamos el vecindario. También lo cambiamos si hemos eliminado partículas.
+            # If there is no improvement, the neighbourhood is changed. It also changes if particles have been deleted.
             if FitnessValSorted[0] <= self.best_score or update_neighbourhoods:
                 update_neighbourhoods = False
-                # Cambio la implementación de R para no hacer matrices enormes con muchos NA
                 nb = list()
                 for i in range(self.npart):
                     # Each particle informs at random K particles (the same particle may be chosen several times), and informs itself.
