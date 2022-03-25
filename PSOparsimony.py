@@ -77,7 +77,7 @@ def _population(pop, seed_ini, popSize, type_ini_pop="randomLHS", ):
     population = population * (pop._max - pop._min)
     population = population + pop._min
 
-    # Convert features to binary
+    # If one wants to convert features to binary:
     #population[:, len(pop._params):nvars] = population[:,len(pop._params):nvars] <= feat_thres
 
     return population
@@ -238,10 +238,12 @@ class PSOparsimony(object):
 
         # Percentage of particles that will be influenced by the best global of their neighbourhoods
         # (otherwise, they will be influenced by the best of the iteration in each neighbourhood)
-        #TODO: El comportamiento anterior se conseguia iniciando esta variable a 0.
         self.best_global_thres = best_global_thres
 
-        if particles_to_delete is not None and len(particles_to_delete) < maxiter: #Si la longitud es menor que el número de iteraciones, completo con ceros hasta el máximo de iteraciones
+
+        if particles_to_delete is not None and len(particles_to_delete) < maxiter:
+            # If the length of the particles to delete is lower than the iterations, the array is completed with zeros
+            # up to the number of iterations.
             self.particles_to_delete = np.zeros(maxiter).astype(int)
             self.particles_to_delete[:len(particles_to_delete)] = particles_to_delete[:]
         else:
@@ -259,7 +261,7 @@ class PSOparsimony(object):
 
         population = Population(self.params, columns=self.features)
         population.population = _population(population, seed_ini=self.seed_ini, popSize=self.npart,
-                                            type_ini_pop=self.type_ini_pop)  # Creo la poblacion de la primera generacion
+                                            type_ini_pop=self.type_ini_pop)  # To create the initial population
 
 
         # Update population to satisfy the feat_thres
@@ -277,7 +279,7 @@ class PSOparsimony(object):
         best_fit_particle[:] = np.NINF
 
         best_pos_particle = np.empty(shape=(self.npart, len(population._params) + nfs))
-        best_complexity_particle = np.empty(self.npart)  # Las complejidades
+        best_complexity_particle = np.empty(self.npart)  # Complexities
         best_complexity_particle[:] = np.Inf
 
         range_numbers = population._max - population._min
@@ -319,7 +321,7 @@ class PSOparsimony(object):
 
         update_neighbourhoods = False
 
-        for iter in range(self.maxiter):  # range(self.maxiter):
+        for iter in range(self.maxiter):
 
             self.iter = iter
 
@@ -328,24 +330,17 @@ class PSOparsimony(object):
             # Compute solutions
             #####################################################
 
-            # for t in range(self.npart):
+
             for t in valid_particles:
                 c = population.getChromosome(t)
-            #    print("ITER", iter, "t", t, "PARAMS", c._params, "FEATURES", c.columns)
 
-                # A los individuos sin features, les pongo todas a True.
-                # if np.sum(c.columns) == 0:
-                #     population._pop[t,len(population._params):] = np.ones(shape = nfs)
-                #
-                # c = population.getChromosome(t)
                 if np.sum(c.columns) > 0:
                     fit = self.fitness(c, X=X, y=y)
                     fitnessval[t] = fit[0][0]
                     fitnesstst[t] = fit[0][1]
                     complexity[t] = fit[0][2]
                     _models[t] = fit[1]
-            #        print("ITER", iter, "t", t, "PARAMS", c._params, "FEATURES", c.columns, "fitnessval", fitnessval[t])
-            #print("Population", iter, population._pop)
+
 
             if self.seed_ini:
                 np.random.seed(self.seed_ini * iter)
@@ -366,7 +361,7 @@ class PSOparsimony(object):
                 print(np.c_[FitnessValSorted, FitnessTstSorted, ComplexitySorted, population.population][:10, :])
                 # input("Press [enter] to continue")
 
-            if self.rerank_error != 0.0:  # Aquí en GAParsimony está: and iter >= iter_start_rerank:
+            if self.rerank_error != 0.0:
                 ord_rerank = _rerank(FitnessValSorted, ComplexitySorted, self.npart, self.rerank_error)
                 PopSorted = PopSorted[ord_rerank]
                 FitnessValSorted = FitnessValSorted[ord_rerank]
@@ -379,8 +374,6 @@ class PSOparsimony(object):
                     print(np.c_[FitnessValSorted, FitnessTstSorted, ComplexitySorted, population.population][:10, :])
                     # input("Press [enter] to continue")
 
-
-            #print(pd.DataFrame(np.c_[bestGlobalPopulation, bestGlobalFitnessVal, bestGlobalComplexity]))
 
             # Keep results
             # ---------------
@@ -395,12 +388,6 @@ class PSOparsimony(object):
             self.bestSolList.append(bestIterSolution)
             self.best_models_list.append(_modelsSorted[0])
             self.best_models_conf_list.append(PopSorted[0])
-
-            bestParsimonyFitnessVal = FitnessValSorted[1]
-            bestParsimonyFitnessTst = FitnessTstSorted[1]
-            bestParsimonyComplexity = ComplexitySorted[1]
-            bestIterParsimonySolution = np.concatenate([[bestParsimonyFitnessVal, bestParsimonyFitnessTst, bestParsimonyComplexity], PopSorted[1]])
-
 
             # Keep Global Best Model
             # ------------------
