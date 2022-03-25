@@ -391,7 +391,7 @@ class PSOparsimony(object):
 
             # Keep Global Best Model
             # ------------------
-            # Guardo el best_score global del proceso completo. Lo actualizamos si encontramos uno mejor, o uno igual con menos complejidad.
+            # The best_score of the whole process. It is update if we find a better score, or equal but with lower complexity.
             if bestfitnessVal > self.best_score or (bestfitnessVal == self.best_score and bestcomplexity < self.best_complexity):
                 self.best_score = bestfitnessVal
                 self.best_complexity = bestcomplexity
@@ -402,15 +402,6 @@ class PSOparsimony(object):
                                             bestcomplexity]
                 self.best_model = _modelsSorted[0]
                 self.best_model_conf = PopSorted[0].copy()
-
-            # Keep Global best parsimony model
-
-            # Si el mejor de la iteración mejora el parsimonioso global y es más simple, actualizo.
-            # Si el mejor de la iteración mejora el parsimonioso global y es más complejo, NO actualizo (ya estará guardado en self.best_score)
-            # Si el mejor parsimonios de la iteración mejora el parsimonioso global y es más simple, actualizo
-            # Si el mejor parsimonioso de la iteración mejora el parsimonioso global y es más complejo,
-            # entonces aplico algo parecido al rerank (lo actualizo si mejora mucho, aunque sea más complejo)
-
 
             # Update global best positions, fitness and complexity of each particle (with NO rerank)
             for i in range(self.npart):
