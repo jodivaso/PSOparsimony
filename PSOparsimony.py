@@ -231,6 +231,8 @@ class PSOparsimony(object):
         self.seed_ini = seed_ini
         if pmutation is None:
             self.pmutation = 1/len(features)
+        else:
+            self.pmutation = pmutation
 
         self.feat_thres = feat_thres
 
