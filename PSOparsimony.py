@@ -201,7 +201,7 @@ class PSOparsimony(object):
                  IW_max=0.9,
                  IW_min=0.4,
                  K=3,
-                 pmutation=0.03,
+                 pmutation=None,
                  tol = 1e-4,
                  rerank_error=0.005,
                  keep_history = False,
@@ -225,10 +225,12 @@ class PSOparsimony(object):
         self.IW_min = IW_min
         self.K = K
         self.tol = tol
-        self.pmutation = pmutation
+
         self.rerank_error = rerank_error
         self.verbose = verbose
         self.seed_ini = seed_ini
+        if pmutation is None:
+            self.pmutation = 1/len(features)
 
         self.feat_thres = feat_thres
 
