@@ -433,7 +433,7 @@ class PSOparsimony(object):
             # Call to 'monitor' function
             # --------------------------
             if self.verbose > 0:
-                parsimony_monitor(fitnessval, bestfitnessVal, bestfitnessTst, bestcomplexity, elapsed_gen)
+                parsimony_monitor(iter, fitnessval, bestfitnessVal, bestfitnessTst, bestcomplexity, elapsed_gen)
 
             if self.verbose == 2:
                 print("\nStep 3. Fitness results")
